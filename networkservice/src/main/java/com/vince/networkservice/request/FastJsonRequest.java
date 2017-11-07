@@ -23,33 +23,18 @@ public class FastJsonRequest<T> extends Request<T> {
     private Map<String,String> mHeaders;
     private Request.Priority mPriority;
     private Class<T> mClass;
-    private String url;
-    
+
     public FastJsonRequest(int method, String url, Map<String, String> params,
 						   Map<String, String> headers, Class<T> pclass,
 						   Response.Listener<T> listener, Response.ErrorListener errorListener,
 						   Priority priority) {
     	
         super(method, url, errorListener);
-        this.url = url;
         mListener = listener;
         mParams = params;
         mHeaders = headers;
         mPriority = priority;
         mClass = pclass;
-    }
-
-	/**
-	 * 进一步封装
-     */
-    public FastJsonRequest(String url, Map<String, String> params,
-						   Map<String, String> headers, Class<T> pclass,
-						   Response.Listener<T> listener, Response.ErrorListener errorListener,
-						   Priority priority) {
-        this(null == params ? Method.GET : Method.POST, url,
-			 params, headers,
-			 pclass, listener,
-			 errorListener, priority);
     }
 
 	/**

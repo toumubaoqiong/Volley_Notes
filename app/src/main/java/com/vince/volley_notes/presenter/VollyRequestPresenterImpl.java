@@ -17,11 +17,9 @@ public class VollyRequestPresenterImpl implements VollyRequestPresenter{
     private static final String TAG = "VRequestPresenterImpl";
 
     private VolleyRequstModel mVolleyRequstModel;
-    private Context mContext;
 
     public VollyRequestPresenterImpl(Context context){
-        mContext = context;
-        mVolleyRequstModel = new VolleyRequstModelImpl(mContext);
+        mVolleyRequstModel = new VolleyRequstModelImpl(context);
     }
 
     @Override

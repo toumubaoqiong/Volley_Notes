@@ -10,8 +10,6 @@ import java.util.Map;
  *  @描述：    转化GET请求的url
  */
 public class UrlWithParams {
-    private static final String TAG = "UrlWithParams";
-
     Map<String,String> mParams;
     String mUrl;
 
