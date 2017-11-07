@@ -7,9 +7,13 @@ import java.util.Map;
  */
 public interface VollyRequestPresenter {
 
-    void getRequest(String urlWithParams);
-    void postRequest(String url,
-                     final Map<String, String> params);
+    void getRequest(String url, final Map<String, String> params);
+
+    void postRequest(String url, final Map<String, String> params);
+
+    void getJsonRequest(String url, final Map<String, String> params);
+
+    void postJsonRequest(String url, final Map<String, String> params);
 
     void cancelRequest();
 }

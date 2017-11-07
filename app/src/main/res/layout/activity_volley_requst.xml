@@ -22,5 +22,19 @@
         android:layout_below="@id/btn_two"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="GET JSON REQUEST"/>
+
+    <Button
+        android:id="@+id/btn_four"
+        android:layout_below="@id/btn_three"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="POST JSON REQUEST"/>
+
+    <Button
+        android:id="@+id/btn_five"
+        android:layout_below="@id/btn_four"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:text="CANCEL REQUEST"/>
 </RelativeLayout>
