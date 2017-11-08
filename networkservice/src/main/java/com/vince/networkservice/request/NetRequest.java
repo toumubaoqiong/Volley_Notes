@@ -3,6 +3,7 @@ package com.vince.networkservice.request;
 import android.content.Context;
 import android.util.Log;
 
+import com.alibaba.fastjson.JSON;
 import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
@@ -11,6 +12,8 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.vince.networkservice.cache.CacheInfo;
+import com.vince.networkservice.cache.CacheManager;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -77,12 +80,13 @@ public class NetRequest {
      */
     public <T> void getjson(String url,
                             Map<String, String> params,
+                            final boolean needCache,
                             final NetRequestListener<T> listener,
                             String tag,
                             Class<T> javaBeanClass)
     {
 
-        getjson(url, params, listener, PRIORITY_NORMAL, tag, javaBeanClass);
+        getjson(url, params, needCache, listener, PRIORITY_NORMAL, tag, javaBeanClass);
     }
 
     /**
@@ -97,6 +101,7 @@ public class NetRequest {
      */
     public <T> void getjson(String url,
                             Map<String, String> params,
+                            final boolean needCache,
                             final NetRequestListener<T> listener,
                             int priority,
                             String tag,
@@ -124,6 +129,12 @@ public class NetRequest {
             Log.d(TAG, "[getJson]　新请求添加成功" + urlWithParams);
         }
 
+        final CacheInfo<T> cacheResponse = loadCache(needCache, urlWithParams, javaBeanClass);
+        if (null != cacheResponse && !cacheResponse.isDue()) {
+            listener.onSuccess(cacheResponse.getCache());
+            return;
+        }
+
         FastJsonRequest<T> tFastJsonRequest = new FastJsonRequest<T>(Request.Method.GET,
                                                                      urlWithParams,
                                                                      null,
@@ -136,6 +147,9 @@ public class NetRequest {
                                                                                      urlWithParams);
                                                                              listener.onSuccess(
                                                                                      response);
+                                                                             saveToCache(response,
+                                                                                         urlWithParams,
+                                                                                         needCache);
                                                                          }
                                                                      },
                                                                      new Response.ErrorListener() {
@@ -178,12 +192,13 @@ public class NetRequest {
      */
     public <T> void postjson(String url,
                              Map<String, String> params,
+                             final boolean needCache,
                              final NetRequestListener<T> listener,
                              String tag,
                              Class<T> javaBeanClass)
     {
 
-        postjson(url, params, listener, PRIORITY_NORMAL, tag, javaBeanClass);
+        postjson(url, params, needCache, listener, PRIORITY_NORMAL, tag, javaBeanClass);
     }
 
     /**
@@ -198,6 +213,7 @@ public class NetRequest {
      */
     public <T> void postjson(String url,
                              Map<String, String> params,
+                             final boolean needCache,
                              final NetRequestListener<T> listener,
                              int priority,
                              String tag,
@@ -220,10 +236,16 @@ public class NetRequest {
         Request<?> request = getRequestFromMap(urlWithParams);
 
         if (null != request) {
-            Log.i(TAG, "[getJson]　已有相同的请求：" + urlWithParams);
+            Log.i(TAG, "[postJson]　已有相同的请求：" + urlWithParams);
             return;
         } else {
-            Log.d(TAG, "[getJson]　新请求添加成功" + urlWithParams);
+            Log.d(TAG, "[postJson]　新请求添加成功" + urlWithParams);
+        }
+
+        final CacheInfo<T> cacheResponse = loadCache(needCache, urlWithParams, javaBeanClass);
+        if (null != cacheResponse && !cacheResponse.isDue()) {
+            listener.onSuccess(cacheResponse.getCache());
+            return;
         }
 
         FastJsonRequest<T> tFastJsonRequest = new FastJsonRequest<T>(Request.Method.POST,
@@ -234,11 +256,16 @@ public class NetRequest {
                                                                      new Response.Listener<T>() {
                                                                          @Override
                                                                          public void onResponse(T response) {
+
                                                                              removeRequestFromMap(
                                                                                      urlWithParams);
 
                                                                              listener.onSuccess(
                                                                                      response);
+
+                                                                             saveToCache(response,
+                                                                                         urlWithParams,
+                                                                                         needCache);
                                                                          }
                                                                      },
                                                                      new Response.ErrorListener() {
@@ -337,9 +364,11 @@ public class NetRequest {
      */
     public void getStringRequest(String url,
                                  Map<String, String> params,
+                                 final boolean needCache,
                                  final NetRequestListener<String> listener,
-                                 String tag){
-        getStringRequest(url,params,listener,PRIORITY_NORMAL,tag);
+                                 String tag)
+    {
+        getStringRequest(url, params, needCache, listener, PRIORITY_NORMAL, tag);
     }
 
     /**
@@ -347,6 +376,7 @@ public class NetRequest {
      */
     public void getStringRequest(String url,
                                  Map<String, String> params,
+                                 final boolean needCache,
                                  final NetRequestListener<String> listener,
                                  final int priority,
                                  String tag)
@@ -374,6 +404,12 @@ public class NetRequest {
             Log.d(TAG, "[getJson]　新请求添加成功" + urlWithParams);
         }
 
+        final CacheInfo<String> cacheResponse = loadCache(needCache, urlWithParams, String.class);
+        if (null != cacheResponse && !cacheResponse.isDue()) {
+            listener.onSuccess(cacheResponse.getCache());
+            return;
+        }
+
         StringRequest stringRequest = new StringRequest(Request.Method.GET,
                                                         urlWithParams,
                                                         new Response.Listener<String>() {
@@ -381,6 +417,9 @@ public class NetRequest {
                                                             public void onResponse(String response) {
                                                                 removeRequestFromMap(urlWithParams);
                                                                 listener.onSuccess(response);
+                                                                saveToCache(response,
+                                                                            urlWithParams,
+                                                                            needCache);
                                                             }
                                                         },
                                                         new Response.ErrorListener() {
@@ -417,20 +456,70 @@ public class NetRequest {
     }
 
     /**
+     * 加载缓存
+     */
+    private <T> CacheInfo<T> loadCache(boolean needCache, String key, Class<T> javaBeanClass) {
+        if (!needCache) { return null; }
+
+        CacheInfo<String> jsonCache = CacheManager.getInstance(mApplicaitonContext)
+                                                  .loadString(key);
+
+        if (jsonCache == null) {
+            return null;
+        }
+
+        T            cacheResponse = JSON.parseObject(jsonCache.getCache(), javaBeanClass);
+        CacheInfo<T> cacheInfo     = new CacheInfo<>();
+        cacheInfo.setCache(cacheResponse);
+        cacheInfo.setDue(jsonCache.isDue());
+
+        return cacheInfo;
+    }
+
+    /**
+     * 保存缓存数据
+     */
+    private <T> void saveToCache(T response, String urlWithParams, boolean needCache) {
+
+        if (!needCache) {
+            return;
+        }
+
+        //判断返回值是否有问题,没有问题则机型缓存
+        if (response instanceof IDataEmpty) {
+            IDataEmpty iDataEmpty = (IDataEmpty) response;
+
+            if (iDataEmpty.isResultDataEmpty()) {
+                Log.e(TAG, "[saveDataToCache]　返回数据为空 不缓存 " + urlWithParams);
+
+                return;
+            }
+        }
+
+        String jsonString = JSON.toJSONString(response);
+        CacheManager.getInstance(mApplicaitonContext)
+                    .saveString(urlWithParams, jsonString);
+    }
+
+    /**
      * 外面在封装一层,便于调用
      */
     public void postStringRequest(String url,
                                   final Map<String, String> params,
+                                  final boolean needCache,
                                   final NetRequestListener<String> listener,
-                                  String tag){
-        postStringRequest(url,params,listener,PRIORITY_NORMAL,tag);
+                                  String tag)
+    {
+        postStringRequest(url, params, needCache, listener, PRIORITY_NORMAL, tag);
 
     }
+
     /**
      *description:stringRequest POST请求
      */
     public void postStringRequest(String url,
                                   final Map<String, String> params,
+                                  final boolean needCache,
                                   final NetRequestListener<String> listener,
                                   final int priority,
                                   String tag)
@@ -452,10 +541,16 @@ public class NetRequest {
         Request<?> request = getRequestFromMap(urlWithParams);
 
         if (null != request) {
-            Log.i(TAG, "[getJson]　已有相同的请求：" + urlWithParams);
+            Log.i(TAG, "[postJson]　已有相同的请求：" + urlWithParams);
             return;
         } else {
-            Log.d(TAG, "[getJson]　新请求添加成功" + urlWithParams);
+            Log.d(TAG, "[postJson]　新请求添加成功" + urlWithParams);
+        }
+
+        final CacheInfo<String> cacheResponse = loadCache(needCache, urlWithParams, String.class);
+        if (null != cacheResponse && !cacheResponse.isDue()) {
+            listener.onSuccess(cacheResponse.getCache());
+            return;
         }
 
         StringRequest stringRequest = new StringRequest(Request.Method.POST,
@@ -465,6 +560,9 @@ public class NetRequest {
                                                             public void onResponse(String response) {
                                                                 removeRequestFromMap(urlWithParams);
                                                                 listener.onSuccess(response);
+                                                                saveToCache(response,
+                                                                            urlWithParams,
+                                                                            needCache);
                                                             }
                                                         },
                                                         new Response.ErrorListener() {

@@ -27,7 +27,7 @@ public class VolleyRequstModelImpl
                            NetRequestListener<String> listener)
     {
         NetRequest.getInstance(mContext)
-                  .getStringRequest(url,params, listener, TAG);
+                  .getStringRequest(url,params, true, listener, TAG);
     }
 
     @Override
@@ -36,7 +36,7 @@ public class VolleyRequstModelImpl
                             NetRequestListener<String> listener)
     {
         NetRequest.getInstance(mContext)
-                  .postStringRequest(url, params, listener, TAG);
+                  .postStringRequest(url, params,true, listener, TAG);
     }
 
     @Override
@@ -45,7 +45,7 @@ public class VolleyRequstModelImpl
                                final NetRequestListener<Beans> listener)
     {
         NetRequest.getInstance(mContext)
-                  .getjson(url, params, listener, TAG, Beans.class);
+                  .getjson(url, params,true, listener, TAG, Beans.class);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class VolleyRequstModelImpl
                                 final NetRequestListener<Beans> listener)
     {
         NetRequest.getInstance(mContext)
-                  .postjson(url, params, listener, TAG, Beans.class);
+                  .postjson(url, params, true,listener, TAG, Beans.class);
     }
 
     @Override
